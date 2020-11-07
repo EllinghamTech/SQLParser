@@ -34,6 +34,7 @@ namespace EllinghamTech.SqlParser.Internal
             { typeof(GroupByToken),            new[] { "group by" } },
             { typeof(OrderByToken),            new[] { "order by" } },
             { typeof(LimitToken),              new[] { "limit" } },
+            { typeof(OffsetToken),             new[] { "offset" } },
             { typeof(AndToken),                new[] { "and" } },
             { typeof(OrToken),                 new[] { "or" } },
             { typeof(LikeToken),               new[] { "like" } },
