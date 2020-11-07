@@ -11,14 +11,12 @@ namespace EllinghamTech.SqlParser.Internal
         public static readonly char[] BreakingChars = {',', '.'};
 
         /// <summary>
-        /// Key      => Type of node that represents the token
+        /// Key      => typeof BaseToken concrete implementation
         /// Token    => lowercase token value
         ///
         /// There are some special cases.
         /// - UnknownToken is created when a token does not match anything in this dictionary.
         /// - NumericValue is created when a token is (begins with) a number, can be decimal or other support notations
-        /// - InferredExpression token may be created after clauses that required additional tokens, such as ON, WHERE,
-        ///   GROUP BY, ORDER BY, etc
         ///
         /// A token can contain a whitespace.  Note that if the token contains a whitespace, that whitespace can be
         /// replaced with one or more character(s) in the EmptyChars array.
@@ -55,12 +53,12 @@ namespace EllinghamTech.SqlParser.Internal
 
         public static readonly Dictionary<char[], Type> TokenContainers = new Dictionary<char[], Type>
         {
-            { new []{ '\'', '\'' },  typeof(StringValue) },
-            { new []{ '"', '"' },  typeof(StringValue) },
-            { new []{ '[', ']' },  typeof(EscapedValue) },
-            { new []{ '{', '}' },  typeof(PlaceholderValue) },
-            { new []{ '`', '`' },  typeof(EscapedValue) },
-            { new []{ '(', ')' },  typeof(ExpressionToken) },
+            { new []{ '\'', '\'' }, typeof(StringValue) },
+            { new []{ '"', '"' },   typeof(StringValue) },
+            { new []{ '[', ']' },   typeof(EscapedValue) },
+            { new []{ '{', '}' },   typeof(PlaceholderValue) },
+            { new []{ '`', '`' },   typeof(EscapedValue) },
+            { new []{ '(', ')' },   typeof(ExpressionToken) },
         };
     }
 }
