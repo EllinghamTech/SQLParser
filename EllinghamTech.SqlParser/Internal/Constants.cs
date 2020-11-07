@@ -7,7 +7,15 @@ namespace EllinghamTech.SqlParser.Internal
 {
     public static class Constants
     {
+        /// <summary>
+        /// Characters to consider as "Empty" or "Whitespace"
+        /// </summary>
         public static readonly char[] EmptyChars = {' ', '\n', '\t', '\v', '\f'};
+
+        /// <summary>
+        /// Characters that, under normal circumstances, could be considered as a point to break
+        /// for a new string part...
+        /// </summary>
         public static readonly char[] BreakingChars = {',', '.'};
 
         /// <summary>
@@ -52,6 +60,11 @@ namespace EllinghamTech.SqlParser.Internal
             { typeof(IsNotNullToken),          new[] { "is not null" } },
         };
 
+        /// <summary>
+        /// Token containers.  We handle this later in the process, but a container can contain any character
+        /// but a container character itself.  E.g. "this is a test" results in a StringValue representing the
+        /// string.
+        /// </summary>
         public static readonly Dictionary<char[], Type> TokenContainers = new Dictionary<char[], Type>
         {
             { new []{ '\'', '\'' }, typeof(StringValue) },
