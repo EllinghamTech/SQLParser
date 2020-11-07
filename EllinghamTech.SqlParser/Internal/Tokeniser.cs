@@ -8,13 +8,17 @@ using EllinghamTech.SqlParser.Values;
 
 namespace EllinghamTech.SqlParser.Internal
 {
+    /// <summary>
+    /// The tokeniser takes an SQL Query and builds a list of Tokens, which can then be
+    /// used to build the AST
+    /// </summary>
     public class Tokeniser
     {
-        public List<BaseToken> Tokens { get; protected set; } = new List<BaseToken>();
+        public List<BaseToken> Tokens { get; } = new List<BaseToken>();
         public string SqlString { get; }
+
         private List<string> _stringParts = new List<string>();
         private StringBuilder _curPart = new StringBuilder();
-
         private char? _curContainer = null;
         private bool _isEscaped = false;
         private bool _isNumeric = false;
@@ -28,12 +32,22 @@ namespace EllinghamTech.SqlParser.Internal
             SqlString = sqlString;
         }
 
+        /// <summary>
+        /// Build the tokens
+        /// </summary>
         public void Perform()
         {
             SplitString();
             BuildTokens();
         }
 
+        /// <summary>
+        /// Splits the SQL string into a set of parts, each part is the minimal representation allows
+        /// for a token.  String is split by Constants.EmptyChars and Constants.BreakingChars, unless
+        /// we are in a "container".
+        /// </summary>
+        /// <exception cref="InvalidCharacterException"></exception>
+        /// <exception cref="InvalidEndException"></exception>
         private void SplitString()
         {
             // Split string into parts
@@ -68,19 +82,6 @@ namespace EllinghamTech.SqlParser.Internal
                         _isNumeric = false;
                     }
 
-                    continue;
-                }
-
-                // If breaking char, it's a token on it's own
-                if (Constants.BreakingChars.Contains(_curChar))
-                {
-                    if (_curPart.Length > 0)
-                    {
-                        _stringParts.Add(_curPart.ToString());
-                        _curPart.Clear();
-                    }
-
-                    _stringParts.Add(_curChar.ToString());
                     continue;
                 }
 
@@ -130,6 +131,19 @@ namespace EllinghamTech.SqlParser.Internal
                     _isNumeric = false;
                 }
 
+                // If breaking char, it's a token on it's own
+                if (Constants.BreakingChars.Contains(_curChar))
+                {
+                    if (_curPart.Length > 0)
+                    {
+                        _stringParts.Add(_curPart.ToString());
+                        _curPart.Clear();
+                    }
+
+                    _stringParts.Add(_curChar.ToString());
+                    continue;
+                }
+
                 // Otherwise we only write the value to the current part
                 _curPart.Append(_curChar);
             }
@@ -142,12 +156,19 @@ namespace EllinghamTech.SqlParser.Internal
             // If we are in an escape
             if (_isEscaped)
                 throw new InvalidEndException();
+
+            if (_curPart.Length != 0)
+                _stringParts.Add(_curPart.ToString());
         }
 
+        /// <summary>
+        /// Taking the already split parts of the SQL Query, builds a list of tokens.
+        /// </summary>
         private void BuildTokens()
         {
             List<string> parts = new List<string>(_stringParts);
             List<string> collectedParts = new List<string>();
+            bool createdToken = false;
 
             while (parts.Any())
             {
@@ -171,7 +192,7 @@ namespace EllinghamTech.SqlParser.Internal
                     continue;
                 }
 
-                // Otherwise, collect until we reach a container or end
+                // Otherwise, collect parts until we reach a container, numeric or end.
                 foreach (string part in parts)
                 {
                     _curChar = part[0];
@@ -184,44 +205,63 @@ namespace EllinghamTech.SqlParser.Internal
                     collectedParts.Add(part);
                 }
 
-                // We need to get the largest node possible
-                bool createdNode = false;
-
+                // It is possible for a token to be formed from more than one part, so we need to take all
+                // of the parts we can and work our way down.
+                // For example, take LEFT JOIN test ON `test`.id = ...
+                // [0] => LEFT JOIN test ON -> No token matches
+                // [1] => LEFT JOIN test -> No token matches
+                // [2] => LEFT JOIN -> Token Matches
+                //
+                // The reason this is important is that, in the example above, LEFT modifies the Join type.  In SQL
+                // it is valid to use JOIN on it's own without LEFT/RIGHT/INNER/... so we can't just take JOIN and
+                // create a token.
                 for (int x = collectedParts.Count; x > 0; x--)
                 {
-                    Type type = GetNode(collectedParts);
+                    Type type = GetToken(collectedParts);
 
                     if (type == null)
                     {
+                        // No token matches, so remove the last part from the collected parts and
+                        // try again, see example above.
                         collectedParts.RemoveAt(x - 1);
                     }
                     else
                     {
-                        for (int y = (x - 1); y >= 0; y--)
+                        // Remove the used parts.  Example: INNER JOIN is two parts, so remove these
+                        // two parts from the beginning of the parts enumerable.
+                        for (int y = 0; y < x; y++)
                         {
-                            parts.RemoveAt(y);
+                            parts.RemoveAt(0);
                         }
 
+                        // Construct token and get out of the loop
                         Tokens.Add(ConstructToken(type, string.Join(" ", collectedParts)));
-                        createdNode = true;
+                        createdToken = true;
                         break;
                     }
                 }
 
                 collectedParts.Clear();
 
-                // No idea what this is, so it's "unknown"
-                if (!createdNode)
+                // No idea what this is, so it's "unknown".  It is VITAL that we do something with the first
+                // part in the working parts otherwise the parent loop can become infinite.
+                if (!createdToken)
                 {
-                    BaseToken token = new UnknownToken();
-                    token.Raw = parts[0];
-
-                    Tokens.Add(token);
+                    Tokens.Add(new UnknownToken { Raw = parts[0] });
                     parts.RemoveAt(0);
                 }
+
+                createdToken = false;
             }
         }
 
+        /// <summary>
+        /// Taking a type (that is expected to be a BaseToken) and the raw string it is created from, construct
+        /// the Token.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="raw"></param>
+        /// <returns></returns>
         private BaseToken ConstructToken(Type type, string raw)
         {
             BaseToken token = (BaseToken)Activator.CreateInstance(type);
@@ -229,7 +269,13 @@ namespace EllinghamTech.SqlParser.Internal
             return token;
         }
 
-        private Type GetNode(IEnumerable<string> parts)
+        /// <summary>
+        /// Try to get a token from the provided parts. If a single match is found, returns the type
+        /// of the found token otherwise returns null.
+        /// </summary>
+        /// <param name="parts"></param>
+        /// <returns></returns>
+        private Type GetToken(IEnumerable<string> parts)
         {
             string token = string.Join(" ", parts);
 
@@ -246,6 +292,12 @@ namespace EllinghamTech.SqlParser.Internal
             return null;
         }
 
+        /// <summary>
+        /// Test if the part is a numeric.  A part is numeric if it is not just a . and contains only numeric
+        /// characters (include . as a decimal place representation).
+        /// </summary>
+        /// <param name="part"></param>
+        /// <returns></returns>
         private bool PartIsNumeric(string part)
         {
             // Edge case: if the part is just a . then it is NOT numeric
@@ -255,6 +307,10 @@ namespace EllinghamTech.SqlParser.Internal
             return part.All(c => _numerics.Contains(c) || c == '.');
         }
 
+        /// <summary>
+        /// Test if the _curChar is a container character
+        /// </summary>
+        /// <returns></returns>
         private bool IsContainerCharacter()
         {
             if (_isEscaped)
@@ -275,12 +331,19 @@ namespace EllinghamTech.SqlParser.Internal
             }
         }
 
+        /// <summary>
+        /// If the _curChar is a container character, this method can handle it appropriately whether it represents
+        /// the start of beginning of the container.
+        /// </summary>
         private void HandleContainerCharacter()
         {
             // We may be handling a container character, but not the correct one.
             // E.g. the ` in "it's"
             if (_curContainer != null && _curChar != _curContainer)
+            {
+                _curPart.Append(_curChar);
                 return;
+            }
 
             // Are we already in a container?
             if (_curContainer != null)
