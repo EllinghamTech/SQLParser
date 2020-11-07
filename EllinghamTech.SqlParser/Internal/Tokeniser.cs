@@ -282,10 +282,10 @@ namespace EllinghamTech.SqlParser.Internal
             if (_curContainer != null && _curChar != _curContainer)
                 return;
 
-            // If _curPart had values, this indicates we are currently in a value container
-            // so we are at the end of the container.
+            // Are we already in a container?
             if (_curContainer != null)
             {
+                // We are in a container
                 _curPart.Append(_curChar);
                 _stringParts.Add(_curPart.ToString());
                 _curPart.Clear();
@@ -293,6 +293,8 @@ namespace EllinghamTech.SqlParser.Internal
             }
             else
             {
+                // We are no longer in a container but we have been in a container,
+                // otherwise we have just started the container
                 if (_curPart.Length > 0)
                 {
                     _stringParts.Add(_curPart.ToString());
