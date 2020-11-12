@@ -10,6 +10,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Root", "Root", "{7AC7795C-D
 ProjectSection(SolutionItems) = preProject
 	README.md = README.md
 	LICENSE = LICENSE
+	.travis.yml = .travis.yml
+	.gitignore = .gitignore
 EndProjectSection
 EndProject
 Global
