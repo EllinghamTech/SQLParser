@@ -4,6 +4,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EllinghamTech.SqlParser", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground.csproj", "{450692B6-0F39-4078-B2B9-298570B0EF9D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EllinghamTech.SqlParser.Tests", "EllinghamTech.SqlParser.Tests\EllinghamTech.SqlParser.Tests.csproj", "{C87CCC6D-F9FF-4674-A4B9-BF02709E2A73}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Root", "Root", "{7AC7795C-D7F8-4421-9F2C-40FE1F2A7FA8}"
+ProjectSection(SolutionItems) = preProject
+	README.md = README.md
+	LICENSE = LICENSE
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +26,9 @@ Global
 		{450692B6-0F39-4078-B2B9-298570B0EF9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{450692B6-0F39-4078-B2B9-298570B0EF9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{450692B6-0F39-4078-B2B9-298570B0EF9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C87CCC6D-F9FF-4674-A4B9-BF02709E2A73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C87CCC6D-F9FF-4674-A4B9-BF02709E2A73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C87CCC6D-F9FF-4674-A4B9-BF02709E2A73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C87CCC6D-F9FF-4674-A4B9-BF02709E2A73}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
