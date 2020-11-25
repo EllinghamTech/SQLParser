@@ -344,10 +344,16 @@ namespace EllinghamTech.SqlParser.Internal
         {
             // We may be handling a container character, but not the correct one.
             // E.g. the ` in "it's"
-            if (_curContainer != null && _curChar != _curContainer)
+            if (_curContainer != null)
             {
-                _curPart.Append(_curChar);
-                return;
+                char[][] tokenContainers = Constants.TokenContainers.Select(s => s.Key).ToArray();
+                char[] container = tokenContainers.First(s => s[0] == _curContainer);
+
+                if (_curChar != container[1])
+                {
+                    _curPart.Append(_curChar);
+                    return;
+                }
             }
 
             // Are we already in a container?
