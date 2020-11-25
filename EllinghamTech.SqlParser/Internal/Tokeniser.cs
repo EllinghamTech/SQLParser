@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using EllinghamTech.SqlParser.Exceptions;
+using EllinghamTech.SqlParser.Internal.Enum;
 using EllinghamTech.SqlParser.Tokens;
 using EllinghamTech.SqlParser.Values;
 
@@ -21,10 +22,10 @@ namespace EllinghamTech.SqlParser.Internal
         private StringBuilder _curPart = new StringBuilder();
         private char? _curContainer = null;
         private bool _isEscaped = false;
-        private bool _isNumeric = false;
         private char[] _numerics = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
         private char _curChar = '\0';
 
+        private TokenType _tokenType = TokenType.Undefined;
         public Tokeniser(string sqlString)
         {
             sqlString = sqlString.Trim();
@@ -60,7 +61,7 @@ namespace EllinghamTech.SqlParser.Internal
 
                 if (IsContainerCharacter())
                 {
-                    _isNumeric = false;
+                    _tokenType = TokenType.Undefined;
                     HandleContainerCharacter();
                     continue;
                 }
@@ -75,13 +76,18 @@ namespace EllinghamTech.SqlParser.Internal
                 // If this is a space or split and move on
                 if (Constants.EmptyChars.Contains(_curChar))
                 {
-                    if (_curPart.Length > 0)
-                    {
-                        _stringParts.Add(_curPart.ToString());
-                        _curPart.Clear();
-                        _isNumeric = false;
-                    }
+                    TokenSplitAndResetState();
+                    continue;
+                }
 
+                // If it's a special character
+                if (Constants.SpecialChars.Contains(_curChar))
+                {
+                    if (_tokenType != TokenType.SpecialChar)
+                        TokenSplitAndResetState();
+
+                    _tokenType = TokenType.SpecialChar;
+                    _curPart.Append(_curChar);
                     continue;
                 }
 
@@ -89,62 +95,61 @@ namespace EllinghamTech.SqlParser.Internal
                 if (_numerics.Contains(_curChar))
                 {
                     // Not currently a numeric, split and start numeric reading
-                    if (!_isNumeric)
+                    if (_tokenType != TokenType.Numeric)
                     {
-                        if (_curPart.Length > 0)
-                        {
-                            _stringParts.Add(_curPart.ToString());
-                            _curPart.Clear();
-                        }
-
-                        _isNumeric = true;
+                        TokenSplitAndResetState();
+                        _tokenType = TokenType.Numeric;
                     }
 
                     _curPart.Append(_curChar);
                     continue;
                 }
 
-                // We are reading a numeric, but this is not a numeric character
-                if (_isNumeric)
+                // Allow a '.', allowing for decimals
+                if (_tokenType == TokenType.Numeric && _curChar == '.')
                 {
-                    // Allow a '.', allowing for decimals
-                    if (_curChar == '.')
+                    // Can only accept first '.'
+                    if (!_curPart.ToString().Contains('.'))
                     {
-                        // Can only accept first '.'
-                        if (!_curPart.ToString().Contains('.'))
-                        {
-                            _curPart.Append(_curChar);
-                            continue;
-                        }
-
-                        // Unknown Operation
-                        throw new InvalidCharacterException('.', _curPart.ToString(), "Not expecting another . in a numeric");
+                        _curPart.Append(_curChar);
+                        continue;
                     }
 
-                    // Split and move on
-                    if (_curPart.Length > 0)
-                    {
-                        _stringParts.Add(_curPart.ToString());
-                        _curPart.Clear();
-                    }
-
-                    _isNumeric = false;
+                    // Unknown Operation
+                    throw new InvalidCharacterException('.', _curPart.ToString(), "Not expecting another . in a numeric");
                 }
 
                 // If breaking char, it's a token on it's own
                 if (Constants.BreakingChars.Contains(_curChar))
                 {
                     if (_curPart.Length > 0)
-                    {
-                        _stringParts.Add(_curPart.ToString());
-                        _curPart.Clear();
-                    }
+                        TokenSplitAndResetState();
 
                     _stringParts.Add(_curChar.ToString());
                     continue;
                 }
 
-                // Otherwise we only write the value to the current part
+                // We are reading special chars, but this character is not a special char
+                if (_tokenType == TokenType.SpecialChar && !Constants.SpecialChars.Contains(_curChar))
+                {
+                    TokenSplitAndResetState();
+
+                    // Is it a numeric?
+                    if (_numerics.Contains(_curChar))
+                        _tokenType = TokenType.Numeric;
+                }
+
+                // We are reading a numeric, but this isn't a numeric
+                if (_tokenType == TokenType.Numeric && !_numerics.Contains(_curChar))
+                {
+                    TokenSplitAndResetState();
+
+                    // Is it a special char?
+                    if (Constants.SpecialChars.Contains(_curChar))
+                        _tokenType = TokenType.SpecialChar;
+                }
+
+                // Write the value to the current part
                 _curPart.Append(_curChar);
             }
 
@@ -158,7 +163,7 @@ namespace EllinghamTech.SqlParser.Internal
                 throw new InvalidEndException();
 
             if (_curPart.Length != 0)
-                _stringParts.Add(_curPart.ToString());
+                TokenSplitAndResetState();
         }
 
         /// <summary>
@@ -350,23 +355,30 @@ namespace EllinghamTech.SqlParser.Internal
             {
                 // We are in a container
                 _curPart.Append(_curChar);
-                _stringParts.Add(_curPart.ToString());
-                _curPart.Clear();
-                _curContainer = null;
+                TokenSplitAndResetState();
             }
             else
             {
                 // We are no longer in a container but we have been in a container,
                 // otherwise we have just started the container
                 if (_curPart.Length > 0)
-                {
-                    _stringParts.Add(_curPart.ToString());
-                    _curPart.Clear();
-                }
+                    TokenSplitAndResetState();
 
                 _curPart.Append(_curChar);
                 _curContainer = _curChar;
             }
+        }
+
+        private void TokenSplitAndResetState()
+        {
+            if (_curPart.Length > 0)
+            {
+                _stringParts.Add(_curPart.ToString());
+                _curPart.Clear();
+            }
+
+            _curContainer = null;
+            _tokenType = TokenType.Undefined;
         }
     }
 }

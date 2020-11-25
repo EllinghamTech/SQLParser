@@ -19,6 +19,12 @@ namespace EllinghamTech.SqlParser.Internal
         public static readonly char[] BreakingChars = {',', '.'};
 
         /// <summary>
+        /// Characters that are read as part of a "special character" token.  Characters in this array MUST NOT
+        /// also exist in BreakingChars, as the functionality is subtle yet different.
+        /// </summary>
+        public static readonly char[] SpecialChars = {'=', '>', '<', '(', ')', '?', '-', '+', '/', '*', '^'};
+
+        /// <summary>
         /// Key      => typeof BaseToken concrete implementation
         /// Token    => lowercase token value
         ///
