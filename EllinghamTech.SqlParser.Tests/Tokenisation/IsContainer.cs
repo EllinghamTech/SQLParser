@@ -87,7 +87,7 @@ namespace EllinghamTech.SqlParser.Tests.Tokenisation
         [TestCase('\0')]
         [TestCase('\n')]
         [TestCase('\t')]
-        public void FalseOnCharacterThatIsNotAContainerWhenInContainerCharacter(char curChar)
+        public void FalseOnCharacterThatIsNotAContainerCharacterWhenInContainer(char curChar)
         {
             Tokeniser tokeniser = new Tokeniser("");
             tokeniser.Send("_curChar", curChar);
